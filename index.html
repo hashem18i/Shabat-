@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shabbat Shalom Times</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        #logo {
+            width: 70px; /* Adjust size as needed */
+            height: 70px; /* Adjust size as needed */
+            margin-right: 20px;
+            border: 1px solid #ddd; /* Optional border */
+            border-radius: 50%; /* Makes it circular, remove if you want square */
+            object-fit: cover; /* Ensures the image covers the area well */
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .shabbat-times {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .shabbat-times h2 {
+            color: #777;
+            font-size: 1.2em;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .shabbat-times p {
+            font-size: 1.1em;
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+
+        .shabbat-times strong {
+            color: #3498db;
+        }
+
+        #location {
+            font-style: italic;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .coloring-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .coloring-section h2 {
+            color: #e67e22;
+            margin-top: 0;
+        }
+
+        #coloring-page-image {
+            width: 100%;
+            max-width: 450px;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #777;
+        }
+         #loading-message, #error-message {
+            font-size: 1.1em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <img src="YOUR_LOGO_IMAGE_URL_HERE" alt="Shabbat Candles Logo" id="logo">
+        <h1>Shabbat Shalom Times</h1>
+    </header>
+
+    <div class="shabbat-times">
+        <h2>This Week's Shabbat Times</h2>
+        <p id="location">Côte Saint-Luc, QC, Canada</p>
+        <p id="loading-message">Loading Shabbat times...</p>
+        <p id="error-message" style="display:none; color: red;"></p>
+        <p><strong>Candle Lighting:</strong> <span id="candle-lighting">--:-- PM</span></p>
+        <p><strong>Shabbat Ends (Havdalah):</strong> <span id="havdalah">--:-- PM</span></p>
+        <p><em id="parasha"></em></p>
+    </div>
+
+    <div class="coloring-section">
+        <h2>Weekly Parasha Coloring Page</h2>
+        <p>Enjoy this week's coloring page for kids!</p>
+        <img src="YOUR_COLORING_PAGE_IMAGE_URL_HERE" alt="Parasha Coloring Page" id="coloring-page-image">
+        <p style="font-size: 0.8em; margin-top: 15px;">
+            To download: Right-click (or long-press on mobile) on the image and select "Save Image As...".
+        </p>
+    </div>
+
+    <footer>
+        <p>Shabbat times powered by <a href="https://www.hebcal.com/" target="_blank" rel="noopener">Hebcal</a></p>
+        <p>&copy; <span id="currentYear"></span> Your Name/Organization</p>
+    </footer>
+
+    <script>
+        // Set current year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Hebcal API details for Côte Saint-Luc, QC, Canada
+        // GeoName ID for Côte Saint-Luc: 5928488
+        // Alternatively, use latitude & longitude: latitude=45.467548, longitude=-73.652573
+        const geoNameId = "5928488"; // Côte Saint-Luc
+        const hebcalUrl = `https://www.hebcal.com/shabbat?cfg=json&geonameid=${geoNameId}&m=50&leyning=on`;
+        // m=50 sets Havdalah to 50 minutes after sundown. Adjust if your custom is different.
+        // leyning=on includes Parasha information.
+
+        const candleLightingElement = document.getElementById('candle-lighting');
+        const havdalahElement = document.getElementById('havdalah');
+        const parashaElement = document.getElementById('parasha');
+        const loadingMessageElement = document.getElementById('loading-message');
+        const errorMessageElement = document.getElementById('error-message');
+
+        async function fetchShabbatTimes() {
+            try {
+                const response = await fetch(hebcalUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                loadingMessageElement.style.display = 'none';
+
+                if (data && data.items) {
+                    let candleLightingTime = "Not found";
+                    let havdalahTime = "Not found";
+                    let parashaName = "";
+
+                    // Find candle lighting and Havdalah times for the upcoming Shabbat
+                    // Hebcal usually returns an array, so we need to find the correct items.
+                    // Candle lighting is typically category "candles"
+                    // Havdalah is category "havdalah"
+                    // Parasha is category "parashat"
+
+                    const today = new Date();
+                    today.setHours(0,0,0,0); // Compare dates only, not times
+
+                    for (const item of data.items) {
+                        const itemDate = new Date(item.date);
+                        if (item.category === "candles" && itemDate >= today) {
+                            if (candleLightingTime === "Not found" || new Date(item.date) < new Date(candleLightingTime.split(" on ")[1])) { // get the soonest one
+                                candleLightingTime = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + " on " + new Date(item.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+                            }
+                        } else if (item.category === "havdalah" && itemDate >= today) {
+                             if (havdalahTime === "Not found" || new Date(item.date) < new Date(havdalahTime.split(" on ")[1])) {
+                                havdalahTime = new Date(item.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + " on " + new Date(item.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+                             }
+                        } else if (item.category === "parashat" && itemDate >= today) {
+                            if (!parashaName || new Date(item.date) < new Date(data.items.find(p => p.title === parashaName)?.date)) {
+                                parashaName = item.title;
+                            }
+                        }
+                    }
+
+                    // If after iterating, we still have "Not found" for a future event,
+                    // it might be that this week's already passed, or API structure needs specific handling.
+                    // For simplicity, this example will show "Not found". More robust logic could look further ahead or parse titles.
+
+                    candleLightingElement.textContent = candleLightingTime;
+                    havdalahElement.textContent = havdalahTime;
+                    if (parashaName) {
+                        parashaElement.textContent = `This week's Parasha: ${parashaName}`;
+                    } else {
+                         parashaElement.textContent = "Parasha information not available.";
+                    }
+
+
+                } else {
+                     throw new Error("Shabbat times data not found in API response.");
+                }
+
+            } catch (error) {
+                console.error('Error fetching Shabbat times:', error);
+                loadingMessageElement.style.display = 'none';
+                errorMessageElement.textContent = `Failed to load Shabbat times. Please try refreshing the page. (${error.message})`;
+                errorMessageElement.style.display = 'block';
+                candleLightingElement.textContent = "Error";
+                havdalahElement.textContent = "Error";
+            }
+        }
+
+        fetchShabbatTimes();
+
+        // Update logo placeholder
+        const logoImg = document.getElementById('logo');
+        if (logoImg.src.includes("YOUR_LOGO_IMAGE_URL_HERE")) {
+            // You can set a default local/remote image or leave as is
+            // For example, a simple SVG as a placeholder:
+            logoImg.src = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23ddd'/%3E%3Ctext x='50' y='55' font-family='Arial' font-size='12' text-anchor='middle' fill='%23333'%3ELOGO%3C/text%3E%3C/svg%3E";
+            logoImg.alt = "Placeholder Logo";
+        }
+
+        // Update coloring page placeholder
+        const coloringImg = document.getElementById('coloring-page-image');
+        if (coloringImg.src.includes("YOUR_COLORING_PAGE_IMAGE_URL_HERE")) {
+            // You can set a default or leave as is
+            coloringImg.alt = "Coloring page will be uploaded weekly";
+            // Optionally, hide the image or show a message if no coloring page is set
+            // coloringImg.style.display = 'none';
+            // const coloringSection = document.querySelector('.coloring-section');
+            // const noPageMsg = document.createElement('p');
+            // noPageMsg.textContent = "This week's coloring page will be available soon!";
+            // coloringSection.insertBefore(noPageMsg, coloringImg.nextSibling);
+        }
+
+    </script>
+
+</body>
+</html>
